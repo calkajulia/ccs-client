@@ -19,39 +19,48 @@ public class Main {
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
-
         Scanner scanner = new Scanner(System.in);
-
         String startingCommand = scanner.nextLine();
         String[] splitStartingCommand = startingCommand.split(" ");
+        if(!validateStartingCommand(splitStartingCommand)) {
+            System.err.println("Usage: client <port>");
+            System.err.println("Where <port> is the CCS server port number");
+            System.exit(1);
+        }
 
-        while(true) {
-            if(validateStartingCommand(splitStartingCommand)) {
-                int port = Integer.parseInt(splitStartingCommand[1]);
+        int port = Integer.parseInt(splitStartingCommand[1]);
+        InetAddress serverAddress = discoverServer(port);
+        if(serverAddress == null) {
+            log("Error: No CCS server found on port " + port);
+            System.exit(1);
+        }
 
-                InetAddress serverAddress = discoverServer(port);
+        sendMessagesToServer(serverAddress, port);
+        log("Terminated successfully.");
+    }
 
-                if(serverAddress == null) {
-                    log("Failed on discovering server.");
-                    return;
-                }
+    private static boolean validateStartingCommand(String[] command) {
+        if(command.length != 2) {
+            return false;
+        }
 
-                sendMessagesToServer(serverAddress, port);
-                log("Terminated.");
-                return;
-            } else {
-                log("Invalid starting command. Correct usage: client <port>");
-                return;
+        if(!command[0].equals("client")) {
+            return false;
+        }
+
+        try {
+            int port = Integer.parseInt(command[1]);
+            if(port < 1 || port > 65535) {
+                return false;
             }
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
         }
     }
 
     private static void log(String message) {
         System.out.println("[CLIENT] " + message);
-    }
-
-    private static boolean validateStartingCommand(String[] command) {
-        return command[0].equals("client") && command[1].matches("\\d+");
     }
 
     private static InetAddress discoverServer(int port) throws IOException {
@@ -96,6 +105,8 @@ public class Main {
             Thread.sleep(random.nextInt(2000) + 1000);
         }
         socket.close();
+        writer.close();
+        reader.close();
     }
 
     private static String generateMessage() {
